@@ -1,0 +1,1 @@
+nnUNetv2_predict -i /home/qingyu/code/nnUNet/DATASET/nnUNet_raw/Dataset106_FCD/imagesTr -o /home/qingyu/code/nnUNet/DATASET/nnUNet_predictions -d Dataset106_FCD -c 2d -f 1
