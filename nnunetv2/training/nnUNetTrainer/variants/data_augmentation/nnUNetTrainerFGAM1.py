@@ -8,7 +8,7 @@ from copy import deepcopy
 from datetime import datetime
 from time import time, sleep
 from typing import Tuple, Union, List
-import copy
+
 import numpy as np
 import torch
 from batchgenerators.dataloading.multi_threaded_augmenter import MultiThreadedAugmenter
@@ -65,9 +65,9 @@ from nnunetv2.utilities.get_network_from_plans import get_network_from_plans
 from nnunetv2.utilities.helpers import empty_cache, dummy_context
 from nnunetv2.utilities.label_handling.label_handling import convert_labelmap_to_one_hot, determine_num_input_channels
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
+from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 
-
-class nnUNetTrainer(object):
+class nnUNetTrainerFGSM1(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
                  device: torch.device = torch.device('cuda')):
         # From https://grugbrain.dev/. Worth a read ya big brains ;-)
@@ -148,7 +148,7 @@ class nnUNetTrainer(object):
         self.probabilistic_oversampling = False
         self.num_iterations_per_epoch = 250
         self.num_val_iterations_per_epoch = 50
-        self.num_epochs = 51 # modified by Qingyu, default is 1000
+        self.num_epochs = 1000
         self.current_epoch = 0
         self.enable_deep_supervision = True
 
@@ -1001,46 +1001,6 @@ class nnUNetTrainer(object):
             torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
             self.optimizer.step()
         return {'loss': l.detach().cpu().numpy()}
-    
-    def get_adv_with_fgsm(self, batch: dict, epsilon: float = 0.01) -> dict:
-        data = batch['data']
-        target = batch['target']
-        data = data.to(self.device, non_blocking=True)
-        if isinstance(target, list):
-            target = [i.to(self.device, non_blocking=True) for i in target]
-        else:
-            target = target.to(self.device, non_blocking=True)
-        data.requires_grad = True
-        optimizer = copy.deepcopy(self.optimizer)
-        optimizer.zero_grad(set_to_none=True)
-        with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-            network = copy.deepcopy(self.network)
-            output = network(data)
-            network.zero_grad()
-            
-            l = self.loss(output, target)
-        grad_scaler = copy.deepcopy(self.grad_scaler)
-        if grad_scaler is not None:
-            grad_scaler.scale(l).backward()
-        else:
-            l.backward()
-        perturbation = epsilon * torch.sign(data.grad) 
-    
-        adversarial_image = data + perturbation 
-
-
-        adversarial_image = adversarial_image.detach().cpu()
-        batch['data'].data = adversarial_image.data
-        del data
-        del network
-        del optimizer 
-        del target
-        return batch
-
-
-
-
-        # return {'loss': l.detach().cpu().numpy()}   
 
     def on_train_epoch_end(self, train_outputs: List[dict]):
         outputs = collate_outputs(train_outputs)
@@ -1409,31 +1369,6 @@ class nnUNetTrainer(object):
             train_outputs = []
             for batch_id in range(self.num_iterations_per_epoch):
                 train_outputs.append(self.train_step(next(self.dataloader_train)))
-            self.on_train_epoch_end(train_outputs)
-
-            with torch.no_grad():
-                self.on_validation_epoch_start()
-                val_outputs = []
-                for batch_id in range(self.num_val_iterations_per_epoch):
-                    val_outputs.append(self.validation_step(next(self.dataloader_val)))
-                self.on_validation_epoch_end(val_outputs)
-
-            self.on_epoch_end()
-
-        self.on_train_end()
-
-
-
-    def run_training_with_fgsm(self, epsilon: float = 0.01):
-        self.on_train_start()
-
-        for epoch in range(self.current_epoch, self.num_epochs):
-            self.on_epoch_start()
-
-            self.on_train_epoch_start()
-            train_outputs = []
-            for batch_id in range(self.num_iterations_per_epoch):
-                train_outputs.append(self.train_step(self.get_adv_with_fgsm(next(self.dataloader_train),epsilon=epsilon)))
             self.on_train_epoch_end(train_outputs)
 
             with torch.no_grad():

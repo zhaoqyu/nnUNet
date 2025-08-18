@@ -145,6 +145,7 @@ def run_training(dataset_name_or_id: Union[str, int],
                  only_run_validation: bool = False,
                  disable_checkpointing: bool = False,
                  val_with_best: bool = False,
+                 attack: bool = False,
                  device: torch.device = torch.device('cuda')):
     if plans_identifier == 'nnUNetPlans':
         print("\n############################\n"
@@ -204,7 +205,10 @@ def run_training(dataset_name_or_id: Union[str, int],
             cudnn.benchmark = True
 
         if not only_run_validation:
-            nnunet_trainer.run_training()
+            if attack:
+                nnunet_trainer.run_training_with_fgsm(epsilon=0.01)
+            else:
+                nnunet_trainer.run_training()
 
         if val_with_best:
             nnunet_trainer.load_checkpoint(join(nnunet_trainer.output_folder, 'checkpoint_best.pth'))
@@ -248,6 +252,8 @@ def run_training_entry():
                     help="Use this to set the device the training should run with. Available options are 'cuda' "
                          "(GPU), 'cpu' (CPU) and 'mps' (Apple M1/M2). Do NOT use this to set which GPU ID! "
                          "Use CUDA_VISIBLE_DEVICES=X nnUNetv2_train [...] instead!")
+    parser.add_argument('--attack', action='store_true', required=False,
+                    help='[OPTIONAL] Use this flag to enable FGSM attack.')                  
     args = parser.parse_args()
 
     assert args.device in ['cpu', 'cuda', 'mps'], f'-device must be either cpu, mps or cuda. Other devices are not tested/supported. Got: {args.device}.'
@@ -264,7 +270,7 @@ def run_training_entry():
         device = torch.device('mps')
 
     run_training(args.dataset_name_or_id, args.configuration, args.fold, args.tr, args.p, args.pretrained_weights,
-                 args.num_gpus, args.npz, args.c, args.val, args.disable_checkpointing, args.val_best,
+                 args.num_gpus, args.npz, args.c, args.val, args.disable_checkpointing, args.val_best, args.attack,
                  device=device)
 
 
@@ -273,6 +279,15 @@ if __name__ == '__main__':
     os.environ['MKL_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     # reduces the number of threads used for compiling. More threads don't help and can cause problems
-    os.environ['TORCHINDUCTOR_COMPILE_THREADS'] = 1
+    os.environ['TORCHINDUCTOR_COMPILE_THREADS'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0' # added by Qingyu
+    os.environ['TORCHDYNAMO_DISABLE'] = '1' # added by Qingyu
     # multiprocessing.set_start_method("spawn")
     run_training_entry()
+
+
+'''
+ TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBL
+ E_DEVICES=0 python nnunet
+v2/run/run_training.py  106 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs_fgsm --attack
+'''
