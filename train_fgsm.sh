@@ -1,6 +1,8 @@
-TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=2 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainerFGSM
-TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=2 nnUNetv2_train 106 2d 1 -p nnUNetPlans -tr nnUNetTrainerFGSM 
-TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=2 nnUNetv2_train 106 2d 2 -p nnUNetPlans -tr nnUNetTrainerFGSM
-TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=2 nnUNetv2_train 106 2d 3 -p nnUNetPlans -tr nnUNetTrainerFGSM
-TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=2 nnUNetv2_train 106 2d 4 -p nnUNetPlans -tr nnUNetTrainerFGSM
-
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs_fgsm --attack run_training_with_fgsm
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs_run_training_and_val_with_fgsm --attack run_training_and_val_with_fgsm
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs_run_val_with_fgsm --attack run_val_with_fgsm
+# TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs_pw -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+# TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs_fgsm_pw -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth --attack run_training_with_fgsm
+# TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs_run_training_and_val_with_fgsm_pw -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth --attack run_training_and_val_with_fgsm
+# TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_50epochs_run_val_with_fgsm_pw -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth --attack run_val_with_fgsm
