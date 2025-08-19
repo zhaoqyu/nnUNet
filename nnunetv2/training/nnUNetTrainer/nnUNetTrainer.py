@@ -1446,3 +1446,28 @@ class nnUNetTrainer(object):
             self.on_epoch_end()
 
         self.on_train_end()
+
+
+
+    def run_training_and_val_with_fgsm(self, epsilon: float = 0.01):
+        self.on_train_start()
+
+        for epoch in range(self.current_epoch, self.num_epochs):
+            self.on_epoch_start()
+
+            self.on_train_epoch_start()
+            train_outputs = []
+            for batch_id in range(self.num_iterations_per_epoch):
+                train_outputs.append(self.train_step(self.get_adv_with_fgsm(next(self.dataloader_train),epsilon=epsilon)))
+            self.on_train_epoch_end(train_outputs)
+
+            with torch.no_grad():
+                self.on_validation_epoch_start()
+                val_outputs = []
+                for batch_id in range(self.num_val_iterations_per_epoch):
+                    val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
+                self.on_validation_epoch_end(val_outputs)
+
+            self.on_epoch_end()
+
+        self.on_train_end()
