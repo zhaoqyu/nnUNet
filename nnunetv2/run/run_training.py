@@ -146,6 +146,7 @@ def run_training(dataset_name_or_id: Union[str, int],
                  disable_checkpointing: bool = False,
                  val_with_best: bool = False,
                  attack: bool = False,
+                 epsilon: float = 0.01, 
                  device: torch.device = torch.device('cuda')):
     if plans_identifier == 'nnUNetPlans':
         print("\n############################\n"
@@ -206,7 +207,7 @@ def run_training(dataset_name_or_id: Union[str, int],
 
         if not only_run_validation:
             if attack:
-                nnunet_trainer.run_training_with_fgsm(epsilon=0.01)
+                nnunet_trainer.run_training_with_fgsm(epsilon=epsilon)
             else:
                 nnunet_trainer.run_training()
 
@@ -253,7 +254,8 @@ def run_training_entry():
                          "(GPU), 'cpu' (CPU) and 'mps' (Apple M1/M2). Do NOT use this to set which GPU ID! "
                          "Use CUDA_VISIBLE_DEVICES=X nnUNetv2_train [...] instead!")
     parser.add_argument('--attack', action='store_true', required=False,
-                    help='[OPTIONAL] Use this flag to enable FGSM attack.')                  
+                    help='[OPTIONAL] Use this flag to enable FGSM attack.')   
+    parser.add_argument('--epsilon', type=float, default=0.01, required=False, help="Use this to control noise level")               
     args = parser.parse_args()
 
     assert args.device in ['cpu', 'cuda', 'mps'], f'-device must be either cpu, mps or cuda. Other devices are not tested/supported. Got: {args.device}.'
@@ -270,7 +272,7 @@ def run_training_entry():
         device = torch.device('mps')
 
     run_training(args.dataset_name_or_id, args.configuration, args.fold, args.tr, args.p, args.pretrained_weights,
-                 args.num_gpus, args.npz, args.c, args.val, args.disable_checkpointing, args.val_best, args.attack,
+                 args.num_gpus, args.npz, args.c, args.val, args.disable_checkpointing, args.val_best, args.attack, epsilon=args.epsilon,
                  device=device)
 
 
