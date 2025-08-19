@@ -207,7 +207,9 @@ def run_training(dataset_name_or_id: Union[str, int],
 
         if not only_run_validation:
             if attack:
-                nnunet_trainer.run_training_with_fgsm(epsilon=epsilon)
+                # nnunet_trainer.run_training_with_fgsm(epsilon=epsilon)
+                eval('nnunet_trainer.{}(epsilon={})'.format(attack, epsilon))
+
             else:
                 nnunet_trainer.run_training()
 
@@ -253,8 +255,11 @@ def run_training_entry():
                     help="Use this to set the device the training should run with. Available options are 'cuda' "
                          "(GPU), 'cpu' (CPU) and 'mps' (Apple M1/M2). Do NOT use this to set which GPU ID! "
                          "Use CUDA_VISIBLE_DEVICES=X nnUNetv2_train [...] instead!")
-    parser.add_argument('--attack', action='store_true', required=False,
-                    help='[OPTIONAL] Use this flag to enable FGSM attack.')   
+    parser.add_argument('--attack', type=str, default=None,required=False,
+                    help='[OPTIONAL] Use this flag to enable FGSM attack.'
+                    'run_training_with_fgsm'
+                    'run_training_and_val_with_fgsm'
+                    'run_val_with_fgsm')   
     parser.add_argument('--epsilon', type=float, default=0.01, required=False, help="Use this to control noise level")               
     args = parser.parse_args()
 
@@ -291,5 +296,5 @@ if __name__ == '__main__':
 '''
  TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBL
  E_DEVICES=0 python nnunet
-v2/run/run_training.py  106 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs_fgsm --attack
+v2/run/run_training.py  106 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs_fgsm --attack run_training_and_val_with_fgsm
 '''
