@@ -33,18 +33,68 @@ class nnUNetTrainer_20epochs(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
         self.num_epochs = 20
 
-
+# run_training
 class nnUNetTrainer_50epochs(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
                  device: torch.device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
         self.num_epochs = 50
 
+# run_training_with_fgsm
 class nnUNetTrainer_50epochs_fgsm(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
                  device: torch.device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
         self.num_epochs = 50
+
+# run_training_and_val_with_fgsm
+class nnUNetTrainer_50epochs_run_training_and_val_with_fgsm(nnUNetTrainer):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
+        self.num_epochs = 50
+
+# run_val_with_fgsm
+class nnUNetTrainer_50epochs_run_val_with_fgsm(nnUNetTrainer):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
+        self.num_epochs = 50
+
+
+# run_training pretrained_weights
+class nnUNetTrainer_50epochs_pw(nnUNetTrainer):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
+        self.num_epochs = 50
+
+# run_training_with_fgsm pretrained_weights
+class nnUNetTrainer_50epochs_fgsm_pw(nnUNetTrainer):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
+        self.num_epochs = 50
+
+# run_training_and_val_with_fgsm pretrained_weights
+class nnUNetTrainer_50epochs_run_training_and_val_with_fgsm_pw(nnUNetTrainer):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
+        self.num_epochs = 50
+
+# run_val_with_fgsm pretrained_weights
+class nnUNetTrainer_50epochs_run_val_with_fgsm_pw(nnUNetTrainer):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
+        self.num_epochs = 50
+
+
+
+    
+
+
 
 class nnUNetTrainer_100epochs(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
