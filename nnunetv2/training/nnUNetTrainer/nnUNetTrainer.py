@@ -1495,8 +1495,9 @@ class nnUNetTrainer(object):
                     batch_list_outputs_list.append(self.validation_step(batch))
                 # val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
                 keys = batch_list_outputs_list[0].keys()
-                val_outputs = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
-                val_outputs['loss'] = np.array(val_outputs['loss'][0])
+                val_outputs_i = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
+                val_outputs_i['loss'] = np.array(val_outputs['loss'][0])
+                val_outputs_i.append(val_outputs_i)
                 # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
                 # val_outputs.append(self.validation_step(next(self.dataloader_val)))
 
@@ -1517,6 +1518,7 @@ class nnUNetTrainer(object):
             train_outputs = []
             for batch_id in range(self.num_iterations_per_epoch):
                 train_outputs.append(self.train_step(next(self.dataloader_train)))
+                break
             self.on_train_epoch_end(train_outputs)
 
             # with torch.no_grad():
@@ -1530,8 +1532,9 @@ class nnUNetTrainer(object):
                     batch_list_outputs_list.append(self.validation_step(batch))
                 # val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
                 keys = batch_list_outputs_list[0].keys()
-                val_outputs = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
-                val_outputs['loss'] = np.array(val_outputs['loss'][0])
+                val_outputs_i = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
+                val_outputs_i['loss'] = np.array(val_outputs['loss'][0])
+                val_outputs_i.append(val_outputs_i)
                 # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
                 # val_outputs.append(self.validation_step(next(self.dataloader_val)))
 
