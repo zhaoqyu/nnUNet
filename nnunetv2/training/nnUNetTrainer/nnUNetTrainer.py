@@ -1496,8 +1496,8 @@ class nnUNetTrainer(object):
                 # val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
                 keys = batch_list_outputs_list[0].keys()
                 val_outputs_i = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
-                val_outputs_i['loss'] = np.array(val_outputs['loss'][0])
-                val_outputs_i.append(val_outputs_i)
+                val_outputs_i['loss'] = np.array(val_outputs_i['loss'][0])
+                val_outputs.append(val_outputs_i)
                 # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
                 # val_outputs.append(self.validation_step(next(self.dataloader_val)))
 
@@ -1533,8 +1533,8 @@ class nnUNetTrainer(object):
                 # val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
                 keys = batch_list_outputs_list[0].keys()
                 val_outputs_i = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
-                val_outputs_i['loss'] = np.array(val_outputs['loss'][0])
-                val_outputs_i.append(val_outputs_i)
+                val_outputs_i['loss'] = np.array(val_outputs_i['loss'][0])
+                val_outputs.append(val_outputs_i)
                 # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
                 # val_outputs.append(self.validation_step(next(self.dataloader_val)))
 
