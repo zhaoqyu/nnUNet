@@ -1004,7 +1004,7 @@ class nnUNetTrainer(object):
 
         
     @torch.enable_grad()
-    def get_adv_with_fgsm(self, batch: dict, epsilon: float = 0.01) -> dict:
+    def get_adv_with_fgsm(self, batch: dict, epsilon: list = [0, 0.1, 0.2, 0.3, 0.4]) -> dict:
         data = batch['data']
         target = batch['target']
         data = data.to(self.device, non_blocking=True)
@@ -1026,18 +1026,22 @@ class nnUNetTrainer(object):
             grad_scaler.scale(l).backward()
         else:
             l.backward()
-        perturbation = epsilon * torch.sign(data.grad) 
-    
-        adversarial_image = data + perturbation 
+        batch_list = []
+        data_grad = torch.sign(data.grad)
+        # epsilon = [0, 0.1, 0.2, 0.3, 0.4]
+        for eps in epsilon:
+            if eps != 0:
+                perturbation = eps *  data_grad
+                adversarial_image = data + perturbation 
+                adversarial_image = adversarial_image.detach().cpu()
+                batch['data'].data = adversarial_image.data
+            batch_list.append(copy.deepcopy(batch))
 
-
-        adversarial_image = adversarial_image.detach().cpu()
-        batch['data'].data = adversarial_image.data
         del data
         del network
         del optimizer 
         del target
-        return batch
+        return batch_list
 
 
 
@@ -1438,7 +1442,14 @@ class nnUNetTrainer(object):
             self.on_train_epoch_start()
             train_outputs = []
             for batch_id in range(self.num_iterations_per_epoch):
-                train_outputs.append(self.train_step(self.get_adv_with_fgsm(next(self.dataloader_train),epsilon=epsilon)))
+                # for epsilon in [0.1, 0.2, 0.3, 0.4]:
+                epsilon = [x * 0.1 for x in range(0, 5)]
+                batch_list = self.get_adv_with_fgsm(next(self.dataloader_train),epsilon=epsilon)
+                batch_list_outputs_list = []
+                for batch in batch_list:
+                    batch_list_outputs_list.append(self.train_step(batch))
+                train_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
+                
             self.on_train_epoch_end(train_outputs)
 
             with torch.no_grad():
@@ -1463,14 +1474,30 @@ class nnUNetTrainer(object):
             self.on_train_epoch_start()
             train_outputs = []
             for batch_id in range(self.num_iterations_per_epoch):
-                train_outputs.append(self.train_step(self.get_adv_with_fgsm(next(self.dataloader_train),epsilon=epsilon)))
+                # for epsilon in [0.1, 0.2, 0.3, 0.4]:
+                epsilon = [x * 0.1 for x in range(0, 5)]
+                batch_list = self.get_adv_with_fgsm(next(self.dataloader_train),epsilon=epsilon)
+                batch_list_outputs_list = []
+                for batch in batch_list:
+                    batch_list_outputs_list.append(self.train_step(batch))
+                train_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
+                
             self.on_train_epoch_end(train_outputs)
 
             # with torch.no_grad():
             self.on_validation_epoch_start()
             val_outputs = []
             for batch_id in range(self.num_val_iterations_per_epoch):
-                val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
+                epsilon = [x * 0.1 for x in range(0, 10)]
+                batch_list = self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)
+                batch_list_outputs_list = []
+                for batch in batch_list:
+                    batch_list_outputs_list.append(self.validation_step(batch))
+                val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
+                
+                # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
+                # val_outputs.append(self.validation_step(next(self.dataloader_val)))
+
             self.on_validation_epoch_end(val_outputs)
 
             self.on_epoch_end()
@@ -1494,7 +1521,16 @@ class nnUNetTrainer(object):
             self.on_validation_epoch_start()
             val_outputs = []
             for batch_id in range(self.num_val_iterations_per_epoch):
-                val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
+                epsilon = [x * 0.1 for x in range(0, 10)]
+                batch_list = self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)
+                batch_list_outputs_list = []
+                for batch in batch_list:
+                    batch_list_outputs_list.append(self.validation_step(batch))
+                val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
+                
+                # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
+                # val_outputs.append(self.validation_step(next(self.dataloader_val)))
+
             self.on_validation_epoch_end(val_outputs)
 
             self.on_epoch_end()
