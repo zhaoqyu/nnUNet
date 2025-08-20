@@ -1481,7 +1481,7 @@ class nnUNetTrainer(object):
                 for batch in batch_list:
                     batch_list_outputs_list.append(self.train_step(batch))
                 train_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
-                
+                # break
             self.on_train_epoch_end(train_outputs)
 
             # with torch.no_grad():
@@ -1493,8 +1493,10 @@ class nnUNetTrainer(object):
                 batch_list_outputs_list = []
                 for batch in batch_list:
                     batch_list_outputs_list.append(self.validation_step(batch))
-                val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
-                
+                # val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
+                keys = batch_list_outputs_list[0].keys()
+                val_outputs = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
+                val_outputs['loss'] = np.array(val_outputs['loss'][0])
                 # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
                 # val_outputs.append(self.validation_step(next(self.dataloader_val)))
 
@@ -1526,8 +1528,10 @@ class nnUNetTrainer(object):
                 batch_list_outputs_list = []
                 for batch in batch_list:
                     batch_list_outputs_list.append(self.validation_step(batch))
-                val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
-                
+                # val_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
+                keys = batch_list_outputs_list[0].keys()
+                val_outputs = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
+                val_outputs['loss'] = np.array(val_outputs['loss'][0])
                 # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
                 # val_outputs.append(self.validation_step(next(self.dataloader_val)))
 
