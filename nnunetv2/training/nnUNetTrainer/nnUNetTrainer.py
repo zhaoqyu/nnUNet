@@ -1001,7 +1001,9 @@ class nnUNetTrainer(object):
             torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
             self.optimizer.step()
         return {'loss': l.detach().cpu().numpy()}
-    
+
+        
+    @torch.enable_grad()
     def get_adv_with_fgsm(self, batch: dict, epsilon: float = 0.01) -> dict:
         data = batch['data']
         target = batch['target']
@@ -1054,9 +1056,11 @@ class nnUNetTrainer(object):
 
         self.logger.log('train_losses', loss_here, self.current_epoch)
 
+    @torch.no_grad()
     def on_validation_epoch_start(self):
         self.network.eval()
 
+    @torch.no_grad()
     def validation_step(self, batch: dict) -> dict:
         data = batch['data']
         target = batch['target']
@@ -1123,7 +1127,8 @@ class nnUNetTrainer(object):
             fn_hard = fn_hard[1:]
 
         return {'loss': l.detach().cpu().numpy(), 'tp_hard': tp_hard, 'fp_hard': fp_hard, 'fn_hard': fn_hard}
-
+    
+    @torch.no_grad()
     def on_validation_epoch_end(self, val_outputs: List[dict]):
         outputs_collated = collate_outputs(val_outputs)
         tp = np.sum(outputs_collated['tp_hard'], 0)
@@ -1461,12 +1466,12 @@ class nnUNetTrainer(object):
                 train_outputs.append(self.train_step(self.get_adv_with_fgsm(next(self.dataloader_train),epsilon=epsilon)))
             self.on_train_epoch_end(train_outputs)
 
-            with torch.no_grad():
-                self.on_validation_epoch_start()
-                val_outputs = []
-                for batch_id in range(self.num_val_iterations_per_epoch):
-                    val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
-                self.on_validation_epoch_end(val_outputs)
+            # with torch.no_grad():
+            self.on_validation_epoch_start()
+            val_outputs = []
+            for batch_id in range(self.num_val_iterations_per_epoch):
+                val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
+            self.on_validation_epoch_end(val_outputs)
 
             self.on_epoch_end()
 
@@ -1485,12 +1490,12 @@ class nnUNetTrainer(object):
                 train_outputs.append(self.train_step(next(self.dataloader_train)))
             self.on_train_epoch_end(train_outputs)
 
-            with torch.no_grad():
-                self.on_validation_epoch_start()
-                val_outputs = []
-                for batch_id in range(self.num_val_iterations_per_epoch):
-                    val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
-                self.on_validation_epoch_end(val_outputs)
+            # with torch.no_grad():
+            self.on_validation_epoch_start()
+            val_outputs = []
+            for batch_id in range(self.num_val_iterations_per_epoch):
+                val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
+            self.on_validation_epoch_end(val_outputs)
 
             self.on_epoch_end()
 
