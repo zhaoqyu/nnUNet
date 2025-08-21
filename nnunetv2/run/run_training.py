@@ -294,7 +294,10 @@ if __name__ == '__main__':
 
 
 '''
- TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBL
- E_DEVICES=0 python nnunet
-v2/run/run_training.py  106 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs_fgsm --attack run_training_and_val_with_fgsm
+
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 
+
+
+106 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+
 '''
