@@ -295,11 +295,15 @@ if __name__ == '__main__':
 
 '''
 
+nnUNetv2_plan_and_preprocess -c 2d -d 107 --verify_dataset_integrity  
+
+
 TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 
 
 
-106 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+107 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
 
-106 2d 0 -p nnUNetPlans -tr nnUNetTrainer_1epochs --attack run_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+108 2d 0 -p plans -tr nnUNetTrainer_1epochs --attack run_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+
 
 '''
