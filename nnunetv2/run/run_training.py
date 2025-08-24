@@ -287,7 +287,7 @@ if __name__ == '__main__':
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     # reduces the number of threads used for compiling. More threads don't help and can cause problems
     os.environ['TORCHINDUCTOR_COMPILE_THREADS'] = '1'
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0' # added by Qingyu
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1' # added by Qingyu
     os.environ['TORCHDYNAMO_DISABLE'] = '1' # added by Qingyu
     # multiprocessing.set_start_method("spawn")
     run_training_entry()
@@ -300,10 +300,21 @@ nnUNetv2_plan_and_preprocess -c 2d -d 107 --verify_dataset_integrity
 
 TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 
 
+108 2d 0 -p plans -tr nnUNetTrainer_50epochs -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+108 2d 0 -p plans -tr nnUNetTrainer_50epochs_fgsm --attack run_training_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+108 2d 0 -p plans -tr nnUNetTrainer_50epochs_run_val_with_fgsm --attack run_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+108 2d 0 -p plans -tr class nnUNetTrainer_50epochs_run_training_and_val_with_fgsm --attack run_training_and_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
 
-107 2d 4 -p nnUNetPlans -tr nnUNetTrainer_50epochs -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+
+
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=0 nnUNetv2_train 108 2d 0 -p plans -tr nnUNetTrainer_50epochs -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=1 nnUNetv2_train 108 2d 0 -p plans -tr nnUNetTrainer_50epochs_fgsm --attack run_training_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=2 nnUNetv2_train 108 2d 0 -p plans -tr nnUNetTrainer_50epochs_run_val_with_fgsm --attack run_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 108 2d 0 -p plans -tr nnUNetTrainer_50epochs_run_training_and_val_with_fgsm --attack run_training_and_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
 
 108 2d 0 -p plans -tr nnUNetTrainer_1epochs --attack run_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
+
+
 
 
 '''
