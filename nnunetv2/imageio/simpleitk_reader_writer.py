@@ -120,7 +120,7 @@ class SimpleITKIO(BaseReaderWriter):
         assert 1 < output_dimension < 4
         if output_dimension == 2:
             seg = seg[0]
-
+        # add transpose here Qingyu seg 208 320 320 a = seg.transpose(1, 2, 0) 
         itk_image = sitk.GetImageFromArray(seg.astype(np.uint8 if np.max(seg) < 255 else np.uint16, copy=False))
         itk_image.SetSpacing(properties['sitk_stuff']['spacing'])
         itk_image.SetOrigin(properties['sitk_stuff']['origin'])

@@ -146,7 +146,14 @@ def run_training(dataset_name_or_id: Union[str, int],
                  disable_checkpointing: bool = False,
                  val_with_best: bool = False,
                  attack: bool = False,
-                 epsilon: float = 0.01, 
+                #  epsilon: float = 0.01, 
+                 lam: float = 0.05,       # control parameter λ
+                 epsilon: float = 0.1,    # starting noise level
+                 step_size: float = 0.01, # iterative noise increase
+                 max_iter: int = 50,       # safety limit
+                 attack_only_foreground = False,
+                 train_with_attack=False, 
+                 val_with_attack=False,
                  device: torch.device = torch.device('cuda')):
     if plans_identifier == 'nnUNetPlans':
         print("\n############################\n"
@@ -208,8 +215,17 @@ def run_training(dataset_name_or_id: Union[str, int],
         if not only_run_validation:
             if attack:
                 # nnunet_trainer.run_training_with_fgsm(epsilon=epsilon)
-                eval('nnunet_trainer.{}(epsilon={})'.format(attack, epsilon))
-
+                # eval('nnunet_trainer.{}(epsilon={})'.format(attack, epsilon))
+                method = getattr(nnunet_trainer, attack)
+                result = method(
+                    lam=lam, 
+                    epsilon=epsilon, 
+                    step_size=step_size, 
+                    max_iter=max_iter, 
+                    attack_only_foreground=attack_only_foreground, 
+                    train_with_attack=train_with_attack, 
+                    val_with_attack=val_with_attack
+                )
             else:
                 nnunet_trainer.run_training()
 
@@ -260,7 +276,52 @@ def run_training_entry():
                     'run_training_with_fgsm'
                     'run_training_and_val_with_fgsm'
                     'run_val_with_fgsm')   
-    parser.add_argument('--epsilon', type=float, default=0.01, required=False, help="Use this to control noise level")               
+    # parser.add_argument('--epsilon', type=float, default=0.01, required=False, help="Use this to control noise level")               
+    
+    parser.add_argument(
+        "--lam", 
+        type=float, 
+        default=0.05, 
+        help="Control parameter λ (minimum loss difference required)"
+    )
+
+    parser.add_argument(
+        "--epsilon", 
+        type=float, 
+        default=0.1, 
+        help="Starting noise level for FGSM"
+    )
+
+    parser.add_argument(
+        "--step_size", 
+        type=float, 
+        default=0.3, 
+        help="Iterative noise increase step size"
+    )
+
+    parser.add_argument(
+        "--max_iter", 
+        type=int, 
+        default=10, 
+        help="Safety limit for iterative attack"
+    )
+    parser.add_argument(
+        "--train_with_attack", 
+        action="store_true", 
+        help="If set, perturbation will be applied only on foreground (mask=1)"
+    )
+    parser.add_argument(
+        "--val_with_attack", 
+        action="store_true", 
+        help="If set, perturbation will be applied only on foreground (mask=1)"
+    )
+
+    parser.add_argument(
+        "--attack_only_foreground", 
+        action="store_true", 
+        help="If set, perturbation will be applied only on foreground (mask=1)"
+    )
+    
     args = parser.parse_args()
 
     assert args.device in ['cpu', 'cuda', 'mps'], f'-device must be either cpu, mps or cuda. Other devices are not tested/supported. Got: {args.device}.'
@@ -277,7 +338,14 @@ def run_training_entry():
         device = torch.device('mps')
 
     run_training(args.dataset_name_or_id, args.configuration, args.fold, args.tr, args.p, args.pretrained_weights,
-                 args.num_gpus, args.npz, args.c, args.val, args.disable_checkpointing, args.val_best, args.attack, epsilon=args.epsilon,
+                 args.num_gpus, args.npz, args.c, args.val, args.disable_checkpointing, args.val_best, args.attack,# epsilon=args.epsilon,
+                 lam= args.lam,#: float = 0.05,       # control parameter λ
+                 epsilon=args.epsilon, #: float = 0.1,    # starting noise level
+                 step_size=args.step_size, #: float = 0.01, # iterative noise increase
+                 max_iter=args.max_iter,#: int = 50,       # safety limit
+                 train_with_attack=args.train_with_attack,
+                 val_with_attack = args.val_with_attack,
+                 attack_only_foreground=args.attack_only_foreground,# = False,
                  device=device)
 
 
@@ -287,7 +355,7 @@ if __name__ == '__main__':
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     # reduces the number of threads used for compiling. More threads don't help and can cause problems
     os.environ['TORCHINDUCTOR_COMPILE_THREADS'] = '1'
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1' # added by Qingyu
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2' # added by Qingyu
     os.environ['TORCHDYNAMO_DISABLE'] = '1' # added by Qingyu
     # multiprocessing.set_start_method("spawn")
     run_training_entry()
@@ -314,6 +382,9 @@ TORCHDYNAMO_DISABLE=1 OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3 nnUNetv2_train 10
 
 108 2d 0 -p plans -tr nnUNetTrainer_1epochs --attack run_val_with_fgsm -pretrained_weights /home/qingyu/code/nnUNet_bk/DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
 
+
+
+108 2d 0 -p plans -tr nnUNetTrainer_1epochs --attack run_training_with_fgsm_untill_lambda --train_with_attack --val_with_attack --attack_only_foreground -pretrained_weights ./DATASET/nnUNet_results/Dataset101_fcd/nnUNetTrainer__nnUNetPlans__2d/fold_0/checkpoint_best.pth
 
 
 

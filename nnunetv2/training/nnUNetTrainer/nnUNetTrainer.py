@@ -65,6 +65,7 @@ from nnunetv2.utilities.get_network_from_plans import get_network_from_plans
 from nnunetv2.utilities.helpers import empty_cache, dummy_context
 from nnunetv2.utilities.label_handling.label_handling import convert_labelmap_to_one_hot, determine_num_input_channels
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager
+from nnunetv2.training.loss.compound_losses import get_dc_loss
 
 
 class nnUNetTrainer(object):
@@ -1019,8 +1020,8 @@ class nnUNetTrainer(object):
             network = copy.deepcopy(self.network)
             output = network(data)
             network.zero_grad()
-            
             l = self.loss(output, target)
+
         grad_scaler = copy.deepcopy(self.grad_scaler)
         if grad_scaler is not None:
             grad_scaler.scale(l).backward()
@@ -1033,8 +1034,7 @@ class nnUNetTrainer(object):
             if eps != 0:
                 perturbation = eps *  data_grad
                 adversarial_image = data + perturbation 
-                adversarial_image = adversarial_image.detach().cpu()
-                batch['data'].data = adversarial_image.data
+                batch['data'].data = adversarial_image.detach().cpu().data
             batch_list.append(copy.deepcopy(batch))
 
         del data
@@ -1042,6 +1042,115 @@ class nnUNetTrainer(object):
         del optimizer 
         del target
         return batch_list
+
+
+
+
+
+    def dice_coefficient(self, pred: torch.Tensor, target: torch.Tensor, eps: float = 1e-6) -> float:
+        """
+        pred, target: torch.Tensor of shape (H, W), binary {0,1}
+        """
+
+        pred = (pred[0] == 1).float()
+        pred = pred[0, 0,:]
+        pred = pred.float()
+        target = target[0, 0,:]
+        target = target.float()
+        
+        intersection = (pred * target).sum()
+        union = pred.sum() + target.sum()
+        dice = (2 * intersection + eps) / (union + eps)
+        return dice.item()
+
+
+
+
+    @torch.enable_grad()
+    def get_adv_untill_lambda(
+        self, 
+        batch: dict, 
+        lam: float = 0.05,       # control parameter λ
+        epsilon: float = 0.1,    # starting noise level
+        step_size: float = 0.01, # iterative noise increase
+        max_iter: int = 50,       # safety limit
+        attack_only_foreground = False
+    ) -> dict:
+        data = batch['data']
+        target = batch['target']
+        data = data.to(self.device, non_blocking=True)
+        if isinstance(target, list):
+            target = [i.to(self.device, non_blocking=True) for i in target]
+        else:
+            target = target.to(self.device, non_blocking=True)
+
+        # forward pass before attack
+        data.requires_grad = True
+        optimizer = copy.deepcopy(self.optimizer)
+        optimizer.zero_grad(set_to_none=True)
+        with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+            network = copy.deepcopy(self.network)
+            output = network(data)
+            network.zero_grad()
+            loss_before = self.loss(output, target)
+            for i in range(80):
+                dc_loss_before = get_dc_loss(output[0][i:i+1,:], target[0][i:i+1,:])
+                print(i, dc_loss_before)
+
+            
+
+
+        # backward to get gradient
+        grad_scaler = copy.deepcopy(self.grad_scaler)
+        if grad_scaler is not None:
+            grad_scaler.scale(loss_before).backward()
+        else:
+            loss_before.backward()
+
+        # signed gradient
+        data_grad = torch.sign(data.grad)
+
+        # apply mask (attack only foreground)
+        if attack_only_foreground:
+            # build mask from target (foreground=1, background=0)
+            mask = (target[0] == 1).float()
+            # expand mask if data has multiple channels
+            # if mask.ndim < data.ndim:
+            #     mask = mask.unsqueeze(1).expand_as(data)
+            if (mask == 1).any().item():
+                print("there is foreground in the target")
+            mask = mask.to(self.device)
+            
+            data_grad = data_grad * mask
+
+        # start attack
+        perturbation = adv_data = adv_output = loss_after = None 
+        for _ in range(max_iter):
+            perturbation = epsilon * data_grad
+            adv_data = data + perturbation
+            # adv_data = torch.clamp(adv_data, 0, 1)  # keep valid range
+
+            # recompute loss with adversarial input
+            with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+                adv_output = network(adv_data)
+                loss_after = self.loss(adv_output, target)
+                for i in range(80):
+                    
+                    dc_loss_after = get_dc_loss(adv_output[0][i:i+1,:], target[0][i:i+1,:])
+                    print(i, dc_loss_after)
+
+            diff = torch.abs(loss_after - loss_before).item()
+            if diff > lam:
+                break
+            else:
+                epsilon += step_size  # increase noise iteratively
+             
+
+
+        # store results
+        batch['data'].data = adv_data.detach().cpu().data
+        del data, network, optimizer, target
+        return batch
 
 
 
@@ -1313,6 +1422,8 @@ class nnUNetTrainer(object):
                                                                allowed_num_queued=2)
 
                 self.print_to_log_file(f"predicting {k}")
+                # if k != 'FCD_00169' :
+                #     continue
                 data, _, seg_prev, properties = dataset_val.load_case(k)
 
                 # we do [:] to convert blosc2 to numpy
@@ -1432,6 +1543,43 @@ class nnUNetTrainer(object):
         self.on_train_end()
 
 
+    def run_training_with_fgsm_untill_lambda(self, 
+        lam: float = 0.05,       # control parameter λ
+        epsilon: float = 0.1,    # starting noise level
+        step_size: float = 0.01, # iterative noise increase
+        max_iter: int = 50,       # safety limit
+        attack_only_foreground = False,
+        train_with_attack = False,
+        val_with_attack = False
+        ):
+        self.on_train_start()
+
+        for epoch in range(self.current_epoch, self.num_epochs):
+            self.on_epoch_start()
+
+            self.on_train_epoch_start()
+            train_outputs = []
+            for batch_id in range(self.num_iterations_per_epoch):
+                batch = next(self.dataloader_train)
+                if train_with_attack:
+                    batch = self.get_adv_untill_lambda(batch, lam,epsilon,step_size,max_iter,attack_only_foreground)
+                train_outputs.append(self.train_step(batch))
+            self.on_train_epoch_end(train_outputs)
+
+            with torch.no_grad():
+                self.on_validation_epoch_start()
+                val_outputs = []
+                for batch_id in range(self.num_val_iterations_per_epoch):
+                    batch = next(self.dataloader_val)
+                    if val_with_attack:
+                        batch = self.get_adv_untill_lambda(batch, lam,epsilon,step_size,max_iter,attack_only_foreground)
+                    val_outputs.append(self.validation_step(batch))
+                self.on_validation_epoch_end(val_outputs)
+
+            self.on_epoch_end()
+
+        self.on_train_end()
+
 
     def run_training_with_fgsm(self, epsilon: float = 0.01):
         self.on_train_start()
@@ -1449,7 +1597,7 @@ class nnUNetTrainer(object):
                 for batch in batch_list:
                     batch_list_outputs_list.append(self.train_step(batch))
                 train_outputs.append({'loss': np.array(np.mean(list(map(lambda x:x['loss'],batch_list_outputs_list))))})
-                
+                # break
             self.on_train_epoch_end(train_outputs)
 
             with torch.no_grad():
@@ -1518,7 +1666,7 @@ class nnUNetTrainer(object):
             train_outputs = []
             for batch_id in range(self.num_iterations_per_epoch):
                 train_outputs.append(self.train_step(next(self.dataloader_train)))
-                break
+                # break
             self.on_train_epoch_end(train_outputs)
 
             # with torch.no_grad():
@@ -1535,6 +1683,7 @@ class nnUNetTrainer(object):
                 val_outputs_i = {k: np.ndarray.mean(np.vstack([d[k] for d in batch_list_outputs_list]),axis=0) for k in keys}
                 val_outputs_i['loss'] = np.array(val_outputs_i['loss'][0])
                 val_outputs.append(val_outputs_i)
+                # break
                 # val_outputs.append(self.validation_step(self.get_adv_with_fgsm(next(self.dataloader_val),epsilon=epsilon)))
                 # val_outputs.append(self.validation_step(next(self.dataloader_val)))
 

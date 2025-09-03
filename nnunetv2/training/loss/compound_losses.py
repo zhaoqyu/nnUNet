@@ -53,7 +53,29 @@ class DC_and_CE_loss(nn.Module):
             if self.weight_ce != 0 and (self.ignore_label is None or num_fg > 0) else 0
 
         result = self.weight_ce * ce_loss + self.weight_dice * dc_loss
+
         return result
+    
+
+def get_dc_loss(net_output: torch.Tensor, target: torch.Tensor):
+
+    # print("get_dc_ce_loss")
+
+    soft_dice_kwargs = {'batch_dice': True, 'smooth': 1e-05, 'do_bg': False, 'ddp': False}
+    dc = MemoryEfficientSoftDiceLoss(apply_nonlin=softmax_helper_dim1, **soft_dice_kwargs)
+
+    target_dice = target
+    mask = None
+    dc_loss = dc(net_output, target_dice, loss_mask=mask) 
+
+    return  -dc_loss.item()
+
+
+  
+
+
+
+
 
 
 class DC_and_BCE_loss(nn.Module):
