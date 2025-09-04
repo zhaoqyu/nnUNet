@@ -66,9 +66,9 @@ def get_dc_loss(net_output: torch.Tensor, target: torch.Tensor):
 
     target_dice = target
     mask = None
-    dc_loss = dc(net_output, target_dice, loss_mask=mask) 
+    dc = dc(net_output, target_dice, loss_mask=mask) 
 
-    return  -dc_loss.item()
+    return  -dc.item()
 
 
   
