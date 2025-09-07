@@ -1066,6 +1066,89 @@ class nnUNetTrainer(object):
 
 
 
+    # @torch.enable_grad()
+    # def get_adv_untill_lambda(
+    #     self, 
+    #     batch: dict, 
+    #     lam: float = 0.05,       # control parameter λ
+    #     epsilon: float = 0.1,    # starting noise level
+    #     step_size: float = 0.01, # iterative noise increase
+    #     max_iter: int = 50,       # safety limit
+    #     attack_only_foreground = False
+    # ) -> dict:
+    #     data = batch['data']
+    #     target = batch['target']
+    #     data = data.to(self.device, non_blocking=True)
+    #     if isinstance(target, list):
+    #         target = [i.to(self.device, non_blocking=True) for i in target]
+    #     else:
+    #         target = target.to(self.device, non_blocking=True)
+
+    #     # forward pass before attack
+    #     data.requires_grad = True
+    #     optimizer = copy.deepcopy(self.optimizer)
+    #     optimizer.zero_grad(set_to_none=True)
+    #     with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+    #         network = copy.deepcopy(self.network)
+    #         output = network(data)
+    #         network.zero_grad()
+    #         loss_before = self.loss(output, target)
+    #         dc_loss_before = [get_dc_loss(output[0][i:i+1,:], target[0][i:i+1,:]) for i in range(self.batch_size)]
+
+        
+
+    #     # backward to get gradient
+    #     grad_scaler = copy.deepcopy(self.grad_scaler)
+    #     if grad_scaler is not None:
+    #         grad_scaler.scale(loss_before).backward()
+    #     else:
+    #         loss_before.backward()
+
+    #     # signed gradient
+    #     data_grad = torch.sign(data.grad)
+
+    #     # apply mask (attack only foreground)
+    #     if attack_only_foreground:
+    #         # build mask from target (foreground=1, background=0)
+    #         mask = (target[0] == 1).float()
+    #         # expand mask if data has multiple channels
+    #         # if mask.ndim < data.ndim:
+    #         #     mask = mask.unsqueeze(1).expand_as(data)
+    #         if (mask == 1).any().item():
+    #             print("there is foreground in the target")
+    #         mask = mask.to(self.device)
+            
+    #         data_grad = data_grad * mask
+
+    #     # start attack
+    #     perturbation = adv_data = adv_output = loss_after = None 
+    #     for _ in range(max_iter):
+    #         perturbation = epsilon * data_grad
+    #         adv_data = data + perturbation
+    #         # adv_data = torch.clamp(adv_data, 0, 1)  # keep valid range
+    #         print('start a new attack{}'.format(epsilon))
+    #         # recompute loss with adversarial input
+    #         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+    #             adv_output = network(adv_data)
+    #             loss_after = self.loss(adv_output, target)                
+    #             dc_loss_after = [get_dc_loss(adv_output[0][i:i+1,:], target[0][i:i+1,:]) for i in range(self.batch_size)]
+
+    #         diff = torch.abs(loss_after - loss_before).item()
+    #         if diff > lam:
+    #             break
+    #         else:
+    #             epsilon += step_size  # increase noise iteratively
+             
+
+
+    #     # store results
+    #     batch['data'].data = adv_data.detach().cpu().data
+    #     del data, network, optimizer, target
+    #     return batch
+
+
+
+
     @torch.enable_grad()
     def get_adv_untill_lambda(
         self, 
@@ -1076,6 +1159,9 @@ class nnUNetTrainer(object):
         max_iter: int = 50,       # safety limit
         attack_only_foreground = False
     ) -> dict:
+
+        batch['ori_data'] = copy.deepcopy(batch['data'])
+
         data = batch['data']
         target = batch['target']
         data = data.to(self.device, non_blocking=True)
@@ -1093,12 +1179,18 @@ class nnUNetTrainer(object):
             output = network(data)
             network.zero_grad()
             loss_before = self.loss(output, target)
-            for i in range(80):
-                dc_loss_before = get_dc_loss(output[0][i:i+1,:], target[0][i:i+1,:])
-                print(i, dc_loss_before)
+            dc_loss_before = [get_dc_loss(output[0][i:i+1,:], target[0][i:i+1,:]) for i in range(self.batch_size)]
 
+
+        batch[f'clean'] = {
+            'data': data.detach().cpu().numpy(),
+            'target': target[0].detach().cpu().numpy(),
+            'output': self.get_seg(output),
+            'loss_before': loss_before.item(),
+            'dc_loss_before': dc_loss_before,
             
-
+        }
+        
 
         # backward to get gradient
         grad_scaler = copy.deepcopy(self.grad_scaler)
@@ -1109,6 +1201,40 @@ class nnUNetTrainer(object):
 
         # signed gradient
         data_grad = torch.sign(data.grad)
+
+        eps = epsilon
+        # start whole attack
+        
+        perturbation = adv_data = adv_output = loss_after = None 
+        for _ in range(max_iter):
+            perturbation = epsilon * data_grad
+            adv_data = data + perturbation
+            # adv_data = torch.clamp(adv_data, 0, 1)  # keep valid range
+            # print('start a new attack{}'.format(epsilon))
+            # recompute loss with adversarial input
+            with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+                adv_output = network(adv_data)
+                loss_after = self.loss(adv_output, target)                
+                dc_loss_after = [get_dc_loss(adv_output[0][i:i+1,:], target[0][i:i+1,:]) for i in range(self.batch_size)]
+            diff = torch.abs(loss_after - loss_before).item()
+
+            batch[f'whole_{epsilon}'] = {
+                'perturbation': perturbation.detach().cpu().numpy(),
+                'adv_data': adv_data.detach().cpu().numpy(),
+                'adv_output': self.get_seg(adv_output),
+                'loss_after': loss_after.item(),
+                'dc_loss_after': dc_loss_after,
+                'diff': diff,
+                'epsilon': epsilon
+            }
+
+            if diff > lam:
+                break
+            else:
+                epsilon += step_size  # increase noise iteratively
+
+        del perturbation, adv_data, adv_output
+        epsilon = eps
 
         # apply mask (attack only foreground)
         if attack_only_foreground:
@@ -1129,27 +1255,39 @@ class nnUNetTrainer(object):
             perturbation = epsilon * data_grad
             adv_data = data + perturbation
             # adv_data = torch.clamp(adv_data, 0, 1)  # keep valid range
-
+            print('start a new attack{}'.format(epsilon))
             # recompute loss with adversarial input
             with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
                 adv_output = network(adv_data)
-                loss_after = self.loss(adv_output, target)
-                for i in range(80):
-                    
-                    dc_loss_after = get_dc_loss(adv_output[0][i:i+1,:], target[0][i:i+1,:])
-                    print(i, dc_loss_after)
+                loss_after = self.loss(adv_output, target)                
+                dc_loss_after = [get_dc_loss(adv_output[0][i:i+1,:], target[0][i:i+1,:]) for i in range(self.batch_size)]
 
             diff = torch.abs(loss_after - loss_before).item()
+
+
+            batch[f'roi_{epsilon}'] = {
+                'perturbation': perturbation.detach().cpu().numpy(),
+                'adv_data': adv_data.detach().cpu().numpy(),
+                'adv_output': self.get_seg(adv_output),
+                'loss_after': loss_after.item(),
+                'dc_loss_after': dc_loss_after,
+                'diff': diff,
+                'epsilon': epsilon
+            }
+
             if diff > lam:
                 break
             else:
                 epsilon += step_size  # increase noise iteratively
-             
+
 
 
         # store results
         batch['data'].data = adv_data.detach().cpu().data
         del data, network, optimizer, target
+        import pickle
+        with open('batch.pkl', 'wb') as f:  # 'wb' = write binary
+            pickle.dump(batch, f)
         return batch
 
 
@@ -1241,6 +1379,23 @@ class nnUNetTrainer(object):
 
         return {'loss': l.detach().cpu().numpy(), 'tp_hard': tp_hard, 'fp_hard': fp_hard, 'fn_hard': fn_hard}
     
+
+
+
+    @torch.no_grad()
+    def get_seg(self, output):
+     
+        # we only need the output with the highest output resolution (if DS enabled)
+        if self.enable_deep_supervision:
+            output = output[0]
+            # target = target[0]
+        output_seg = output.argmax(1)[:, None]
+        predicted_segmentation_onehot = torch.zeros(output.shape, device=output.device, dtype=torch.float32)
+        predicted_segmentation_onehot.scatter_(1, output_seg, 1)
+        del output_seg
+        return predicted_segmentation_onehot.detach().cpu().numpy()[:,:1,:]
+
+
     @torch.no_grad()
     def on_validation_epoch_end(self, val_outputs: List[dict]):
         outputs_collated = collate_outputs(val_outputs)

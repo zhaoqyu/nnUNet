@@ -281,21 +281,21 @@ def run_training_entry():
     parser.add_argument(
         "--lam", 
         type=float, 
-        default=0.05, 
+        default=0.4,  # works for whold image
         help="Control parameter λ (minimum loss difference required)"
     )
 
     parser.add_argument(
         "--epsilon", 
         type=float, 
-        default=0.1, 
+        default=0.0, 
         help="Starting noise level for FGSM"
     )
 
     parser.add_argument(
         "--step_size", 
         type=float, 
-        default=0.3, 
+        default=0.1, 
         help="Iterative noise increase step size"
     )
 
@@ -355,7 +355,7 @@ if __name__ == '__main__':
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     # reduces the number of threads used for compiling. More threads don't help and can cause problems
     os.environ['TORCHINDUCTOR_COMPILE_THREADS'] = '1'
-    os.environ['CUDA_VISIBLE_DEVICES'] = '2' # added by Qingyu
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0' # added by Qingyu
     os.environ['TORCHDYNAMO_DISABLE'] = '1' # added by Qingyu
     # multiprocessing.set_start_method("spawn")
     run_training_entry()

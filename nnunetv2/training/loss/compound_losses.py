@@ -60,15 +60,19 @@ class DC_and_CE_loss(nn.Module):
 def get_dc_loss(net_output: torch.Tensor, target: torch.Tensor):
 
     # print("get_dc_ce_loss")
+    ce = RobustCrossEntropyLoss()
+
+
+
 
     soft_dice_kwargs = {'batch_dice': True, 'smooth': 1e-05, 'do_bg': False, 'ddp': False}
     dc = MemoryEfficientSoftDiceLoss(apply_nonlin=softmax_helper_dim1, **soft_dice_kwargs)
 
     target_dice = target
     mask = None
-    dc = dc(net_output, target_dice, loss_mask=mask) 
-
-    return  -dc.item()
+    dc_loss = dc(net_output, target_dice, loss_mask=mask) 
+    ce_loss = ce(net_output, target[:, 0])
+    return  dc_loss.item(), ce_loss.item(), dc_loss.item() + ce_loss.item()
 
 
   
